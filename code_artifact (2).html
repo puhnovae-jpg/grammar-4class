@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Интерактивный грамматический конструктор (4 класс)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome для иконок -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Nunito:wght@600;800;900&display=swap');
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      touch-action: manipulation;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .font-heading {
+      font-family: 'Comfortaa', cursive;
+    }
+
+    /* ==========================================
+       ОБНОВЛЕННЫЕ ЗНАЧКИ ЧЛЕНОВ ПРЕДЛОЖЕНИЯ
+       ========================================== */
+    
+    /* Подлежащее: одна сплошная линия */
+    .line-subject { 
+      border-bottom: 4px solid #2563eb; 
+      width: 100%; 
+      height: 6px; 
+    }
+    
+    /* Сказуемое: две сплошные линии */
+    .line-predicate { 
+      border-bottom: 4px double #16a34a; 
+      border-bottom-width: 6px; 
+      width: 100%; 
+      height: 8px; 
+    }
+    
+    /* Определение: волнистая линия через SVG */
+    .line-definition { 
+      width: 100%; 
+      height: 8px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 4'%3E%3Cpath d='M0,2 Q5,0 10,2 T20,2' fill='none' stroke='%23d97706' stroke-width='2'/%3E%3C/svg%3E");
+      background-repeat: repeat-x;
+      background-size: 16px 8px;
+    }
+    
+    /* Дополнение: пунктир (- - - -) */
+    .line-object { 
+      border-bottom: 4px dashed #dc2626; 
+      width: 100%; 
+      height: 6px; 
+    }
+    
+    /* Обстоятельство: штрих-пунктир (_ . _ . _) */
+    .line-adverbial { 
+      width: 100%; 
+      height: 6px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 4'%3E%3Cline x1='0' y1='2' x2='10' y2='2' stroke='%239333ea' stroke-width='3'/%3E%3Ccircle cx='15' cy='2' r='1.5' fill='%239333ea'/%3E%3Cline x1='20' y1='2' x2='24' y2='2' stroke='%239333ea' stroke-width='3'/%3E%3C/svg%3E");
+      background-repeat: repeat-x;
+      background-size: 24px 6px;
+    }
+
+    /* Значки морфем */
+    .morpheme-prefix-icon {
+      border-top: 3px solid #0284c7;
+      border-right: 3px solid #0284c7;
+      width: 18px;
+      height: 12px;
+      display: inline-block;
+    }
+    .morpheme-root-icon {
+      border-top: 3px solid #16a34a;
+      border-radius: 12px 12px 0 0;
+      width: 22px;
+      height: 12px;
+      display: inline-block;
+    }
+    .morpheme-suffix-icon {
+      width: 0;
+      height: 0;
+      border-left: 9px solid transparent;
+      border-right: 9px solid transparent;
+      border-bottom: 12px solid #d97706;
+      display: inline-block;
+    }
+    .morpheme-ending-icon {
+      border: 3px solid #dc2626;
+      width: 18px;
+      height: 16px;
+      display: inline-block;
+    }
+    .morpheme-base-icon {
+      border-bottom: 3px solid #4b5563;
+      border-left: 3px solid #4b5563;
+      border-right: 3px solid #4b5563;
+      width: 24px;
+      height: 10px;
+      display: inline-block;
+    }
+
+    /* Перетаскиваемый фантомный элемент */
+    .drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.85;
+      transform: scale(1.05);
+      transition: transform 0.05s ease;
+    }
+
+    /* Анимации обратной связи */
+    @keyframes pulse-success {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .animate-success {
+      animation: pulse-success 0.4s ease-in-out 2;
+    }
+
+    @keyframes shake-error {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    .animate-error {
+      animation: shake-error 0.4s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 flex flex-col justify-between overflow-x-hidden">
+
+  <!-- Шапка сайта -->
+  <header class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 text-white shadow-lg p-4 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-white/20 p-2 rounded-2xl backdrop-blur-md">
+          <i class="fa-solid fa-graduation-cap text-3xl text-yellow-300"></i>
+        </div>
+        <div>
+          <h1 class="font-heading text-xl md:text-2xl font-bold tracking-wide">Грамматический Конструктор</h1>
+          <p class="text-xs md:text-sm text-indigo-100 font-semibold">Интерактивный тренажёр по русскому языку • 4 класс</p>
+        </div>
+      </div>
+
+      <!-- Переключатель режимов -->
+      <div class="flex bg-black/20 p-1.5 rounded-2xl backdrop-blur-md space-x-1 w-full md:w-auto justify-center">
+        <button id="btn-mode-syntax" onclick="switchMode('syntax')" class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white text-indigo-700 shadow-md flex items-center gap-2">
+          <i class="fa-solid fa-align-left"></i> Синтаксис
+        </button>
+        <button id="btn-mode-morpheme" onclick="switchMode('morpheme')" class="px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-2">
+          <i class="fa-solid fa-cubes"></i> Морфемика
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Основной контейнер приложения -->
+  <main class="max-w-5xl mx-auto w-full p-3 md:p-6 flex-grow flex flex-col justify-between gap-6">
+
+    <!-- Карточка активного задания -->
+    <div class="bg-white rounded-3xl shadow-xl p-4 md:p-8 border-4 border-indigo-100 flex flex-col justify-between min-h-[400px] relative">
+      
+      <!-- Верхняя панель карточки: Инструкция, переключатель уровня и вопросов -->
+      <div class="flex flex-wrap justify-between items-center pb-4 border-b border-slate-100 gap-2">
+        <div class="flex items-center space-x-2">
+          <span id="mode-badge" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">Синтаксис</span>
+          <span id="level-badge" class="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+            <i class="fa-solid fa-seedling"></i> Уровень 1
+          </span>
+          <span id="task-counter" class="text-xs font-bold text-slate-400 ml-2">Задание 1 из 3</span>
+        </div>
+
+        <!-- Переключатель уровней сложности -->
+        <div id="level-selector" class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold gap-1">
+          <button onclick="setLevel(1)" id="btn-lvl-1" class="px-3 py-1 rounded-lg bg-emerald-500 text-white shadow-sm">1. Базовый</button>
+          <button onclick="setLevel(2)" id="btn-lvl-2" class="px-3 py-1 rounded-lg text-slate-600 hover:bg-slate-200">2. Средний</button>
+          <button onclick="setLevel(3)" id="btn-lvl-3" class="px-3 py-1 rounded-lg text-slate-600 hover:bg-slate-200">3. Высокий</button>
+        </div>
+
+        <div class="flex gap-2">
+          <button onclick="prevTask()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition font-bold">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
+          <button onclick="nextTask()" class="w-10 h-10 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full flex items-center justify-center transition font-bold">
+            <i class="fa-solid fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Интерактивное рабочее поле -->
+      <div class="my-6">
+        <p id="instruction-text" class="text-center text-slate-600 font-extrabold mb-6 text-sm md:text-base bg-amber-50 p-3 rounded-2xl border border-amber-200 shadow-sm">
+          Уровень 1: Найдите грамматическую основу и подпишите их части речи над словами:
+        </p>
+
+        <!-- Синтаксическое поле -->
+        <div id="syntax-workspace" class="flex flex-wrap justify-center items-center gap-4 md:gap-8 py-6 min-h-[180px]">
+          <!-- Слова будут сгенерированы JS-скриптом -->
+        </div>
+
+        <!-- Морфемное поле (по умолчанию скрыто) -->
+        <div id="morpheme-workspace" class="hidden flex-col items-center justify-center gap-6 py-6 min-h-[180px]">
+          <div id="morpheme-word-container" class="flex flex-wrap justify-center items-center gap-1 md:gap-2">
+            <!-- Блоки морфем будут сгенерированы JS-скриптом -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Нижняя панель действий -->
+      <div class="flex flex-wrap justify-between items-center gap-4 pt-4 border-t border-slate-100">
+        <button onclick="resetCurrentTask()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition flex items-center gap-2 text-sm">
+          <i class="fa-solid fa-rotate-right"></i> Сбросить
+        </button>
+
+        <div class="flex gap-3">
+          <button onclick="openCustomTaskModal()" class="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold rounded-2xl transition flex items-center gap-2 text-sm border border-amber-200">
+            <i class="fa-solid fa-plus-circle"></i> Учителю
+          </button>
+          <button onclick="checkAnswers()" class="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-200 hover:shadow-emerald-300 transition transform active:scale-95 flex items-center gap-2 text-base">
+            <i class="fa-solid fa-circle-check"></i> Проверить
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Палитра инструментов (Значки для перетаскивания) -->
+    <div class="bg-white rounded-3xl shadow-lg p-4 md:p-6 border-2 border-slate-200">
+      
+      <!-- Переключатель палитры (Синтаксис / Части речи) для синтаксического режима -->
+      <div id="palette-type-selector" class="flex justify-center mb-4 gap-2 border-b pb-3">
+        <span class="text-xs font-black uppercase text-slate-400 tracking-wider flex items-center mr-2">Выберите инструмент:</span>
+        <button onclick="setPaletteSubtype('members')" id="btn-pal-members" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow">
+          Члены предложения
+        </button>
+        <button onclick="setPaletteSubtype('pos')" id="btn-pal-pos" class="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200">
+          Части речи (над словом)
+        </button>
+      </div>
+
+      <!-- Палитра 1: Члены предложения -->
+      <div id="syntax-palette-members" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        
+        <div class="palette-item bg-blue-50 border-2 border-blue-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-blue-100 transition shadow-sm"
+             data-type="subject" data-category="member" draggable="true">
+          <span class="text-xs font-bold text-blue-700 mb-2">Подлежащее</span>
+          <div class="w-full flex items-center h-4"><div class="line-subject"></div></div>
+        </div>
+
+        <div class="palette-item bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-emerald-100 transition shadow-sm"
+             data-type="predicate" data-category="member" draggable="true">
+          <span class="text-xs font-bold text-emerald-700 mb-2">Сказуемое</span>
+          <div class="w-full flex items-center h-4"><div class="line-predicate"></div></div>
+        </div>
+
+        <div class="palette-item bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-amber-100 transition shadow-sm"
+             data-type="definition" data-category="member" draggable="true">
+          <span class="text-xs font-bold text-amber-700 mb-2">Определение</span>
+          <div class="w-full flex items-center h-4"><div class="line-definition"></div></div>
+        </div>
+
+        <div class="palette-item bg-red-50 border-2 border-red-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-red-100 transition shadow-sm"
+             data-type="object" data-category="member" draggable="true">
+          <span class="text-xs font-bold text-red-700 mb-2">Дополнение</span>
+          <div class="w-full flex items-center h-4"><div class="line-object"></div></div>
+        </div>
+
+        <div class="palette-item bg-purple-50 border-2 border-purple-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-purple-100 transition shadow-sm col-span-2 sm:col-span-1"
+             data-type="adverbial" data-category="member" draggable="true">
+          <span class="text-xs font-bold text-purple-700 mb-2">Обстоятельство</span>
+          <div class="w-full flex items-center h-4"><div class="line-adverbial"></div></div>
+        </div>
+
+      </div>
+
+      <!-- Палитра 2: Части речи -->
+      <div id="syntax-palette-pos" class="hidden grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        
+        <div class="palette-item bg-sky-100 border-2 border-sky-300 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-sky-200 transition shadow-sm"
+             data-type="сущ." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-sky-800">сущ.</span>
+          <span class="text-[10px] text-sky-600 font-bold">Существительное</span>
+        </div>
+
+        <div class="palette-item bg-amber-100 border-2 border-amber-300 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-amber-200 transition shadow-sm"
+             data-type="прил." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-amber-800">прил.</span>
+          <span class="text-[10px] text-amber-600 font-bold">Прилагательное</span>
+        </div>
+
+        <div class="palette-item bg-emerald-100 border-2 border-emerald-300 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-emerald-200 transition shadow-sm"
+             data-type="гл." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-emerald-800">гл.</span>
+          <span class="text-[10px] text-emerald-600 font-bold">Глагол</span>
+        </div>
+
+        <div class="palette-item bg-purple-100 border-2 border-purple-300 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-purple-200 transition shadow-sm"
+             data-type="нар." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-purple-800">нар.</span>
+          <span class="text-[10px] text-purple-600 font-bold">Наречие</span>
+        </div>
+
+        <div class="palette-item bg-rose-100 border-2 border-rose-300 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-rose-200 transition shadow-sm"
+             data-type="мест." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-rose-800">мест.</span>
+          <span class="text-[10px] text-rose-600 font-bold">Местоимение</span>
+        </div>
+
+        <div class="palette-item bg-slate-200 border-2 border-slate-400 rounded-2xl p-2.5 flex flex-col items-center justify-center cursor-grab active:cursor-grabbing hover:bg-slate-300 transition shadow-sm"
+             data-type="пр." data-category="pos" draggable="true">
+          <span class="text-xs font-extrabold text-slate-800">пр.</span>
+          <span class="text-[10px] text-slate-600 font-bold">Предлог</span>
+        </div>
+
+      </div>
+
+      <!-- Палитра 3: Морфемика -->
+      <div id="morpheme-palette" class="hidden grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        
+        <div class="palette-item bg-sky-50 border-2 border-sky-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-sky-100 transition shadow-sm"
+             data-type="prefix" data-category="morpheme" draggable="true">
+          <span class="text-xs font-bold text-sky-700 mb-1">Приставка</span>
+          <div class="h-6 flex items-center"><div class="morpheme-prefix-icon"></div></div>
+        </div>
+
+        <div class="palette-item bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-emerald-100 transition shadow-sm"
+             data-type="root" data-category="morpheme" draggable="true">
+          <span class="text-xs font-bold text-emerald-700 mb-1">Корень</span>
+          <div class="h-6 flex items-center"><div class="morpheme-root-icon"></div></div>
+        </div>
+
+        <div class="palette-item bg-amber-50 border-2 border-amber-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-amber-100 transition shadow-sm"
+             data-type="suffix" data-category="morpheme" draggable="true">
+          <span class="text-xs font-bold text-amber-700 mb-1">Суффикс</span>
+          <div class="h-6 flex items-center"><div class="morpheme-suffix-icon"></div></div>
+        </div>
+
+        <div class="palette-item bg-rose-50 border-2 border-rose-200 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-rose-100 transition shadow-sm"
+             data-type="ending" data-category="morpheme" draggable="true">
+          <span class="text-xs font-bold text-rose-700 mb-1">Окончание</span>
+          <div class="h-6 flex items-center"><div class="morpheme-ending-icon"></div></div>
+        </div>
+
+        <div class="palette-item bg-slate-100 border-2 border-slate-300 rounded-2xl p-3 flex flex-col items-center justify-between cursor-grab active:cursor-grabbing hover:bg-slate-200 transition shadow-sm col-span-2 sm:col-span-1"
+             data-type="base" data-category="morpheme" draggable="true">
+          <span class="text-xs font-bold text-slate-700 mb-1">Основа</span>
+          <div class="h-6 flex items-center"><div class="morpheme-base-icon"></div></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <!-- Подвал сайта -->
+  <footer class="bg-slate-200 text-slate-500 py-3 text-center text-xs font-semibold">
+    Современный цифровой педагог начальных классов • Авторский разноуровневый конструктор
+  </footer>
+
+  <!-- Модальное окно учителя для добавления заданий -->
+  <div id="modal-teacher" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl animate-success">
+      <div class="flex justify-between items-center mb-4 border-b pb-3">
+        <h3 class="font-heading font-bold text-lg text-indigo-700"><i class="fa-solid fa-sliders"></i> Конструктор Учителя</h3>
+        <button onclick="closeCustomTaskModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Режим:</label>
+          <select id="custom-task-type" class="w-full bg-slate-100 border border-slate-300 rounded-xl p-2.5 font-bold text-sm">
+            <option value="syntax">Синтаксис (Разбор предложения)</option>
+            <option value="morpheme">Морфемика (Разбор слова)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Текст предложения или слова:</label>
+          <input type="text" id="custom-task-text" placeholder="Например: Быстрый чиж летит в гнездо." class="w-full border border-slate-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+        </div>
+
+        <div class="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-xs text-indigo-800">
+          <i class="fa-solid fa-circle-info"></i> Добавленное предложение автоматически появится в текущих заданиях с дифференциацией по уровням!
+        </div>
+      </div>
+
+      <div class="mt-6 flex justify-end space-x-3">
+        <button onclick="closeCustomTaskModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold text-sm">Отмена</button>
+        <button onclick="saveCustomTask()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm">Сохранить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================
+       1. ДАННЫЕ И СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+       ========================================== */
+
+    let currentMode = 'syntax'; // 'syntax' или 'morpheme'
+    let currentLevel = 1; // 1: Базовый, 2: Средний, 3: Высокий
+    let currentTaskIndex = 0;
+    let selectedTool = null; 
+    let selectedCategory = null; // 'member', 'pos', 'morpheme'
+
+    // Список предложений с детальными ответами
+    const syntaxTasks = [
+      {
+        text: "Красивая бабочка весело летит над цветком.",
+        // Полноценный эталонный ответ для каждого слова
+        fullAnswers: [
+          { member: "definition", pos: "прил." }, // Красивая
+          { member: "subject", pos: "сущ." },    // бабочка
+          { member: "adverbial", pos: "нар." },   // весело
+          { member: "predicate", pos: "гл." },   // летит
+          { member: "adverbial", pos: "пр." },   // над
+          { member: "adverbial", pos: "сущ." }   // цветком
+        ]
+      },
+      {
+        text: "Ранней весной звонкий ручей журчит.",
+        fullAnswers: [
+          { member: "definition", pos: "прил." }, // Ранней
+          { member: "adverbial", pos: "сущ." },   // весной
+          { member: "definition", pos: "прил." }, // звонкий
+          { member: "subject", pos: "сущ." },    // ручей
+          { member: "predicate", pos: "гл." }    // журчит
+        ]
+      },
+      {
+        text: "Они читают интересную сказку.",
+        fullAnswers: [
+          { member: "subject", pos: "мест." },   // Они
+          { member: "predicate", pos: "гл." },   // читают
+          { member: "definition", pos: "прил." }, // интересную
+          { member: "object", pos: "сущ." }      // сказку
+        ]
+      }
+    ];
+
+    // Список слов для морфемики
+    const morphemeTasks = [
+      {
+        word: "подснежники",
+        parts: [
+          { text: "под", type: "prefix" },
+          { text: "снеж", type: "root" },
+          { text: "ник", type: "suffix" },
+          { text: "и", type: "ending" }
+        ]
+      },
+      {
+        word: "поездка",
+        parts: [
+          { text: "по", type: "prefix" },
+          { text: "езд", type: "root" },
+          { text: "к", type: "suffix" },
+          { text: "а", type: "ending" }
+        ]
+      }
+    ];
+
+    // Выбранные ответы пользователя: { [wordIndex]: { member: '...', pos: '...' } }
+    let userSyntaxAnswers = {};
+    let userMorphemeAnswers = {};
+
+    /* ==========================================
+       2. ВЕБ-АУДИО СИНТЕЗАТОР ЗВУКОВ
+       ========================================== */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSound(type) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'pop') {
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } else if (type === 'success') {
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } else if (type === 'error') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(110, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      }
+    }
+
+    /* ==========================================
+       3. ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ И УРОВНЕЙ
+       ========================================== */
+
+    function switchMode(mode) {
+      currentMode = mode;
+      currentTaskIndex = 0;
+      clearToolSelection();
+
+      const btnSyntax = document.getElementById('btn-mode-syntax');
+      const btnMorpheme = document.getElementById('btn-mode-morpheme');
+      const modeBadge = document.getElementById('mode-badge');
+      const syntaxWS = document.getElementById('syntax-workspace');
+      const morphemeWS = document.getElementById('morpheme-workspace');
+      const paletteSelector = document.getElementById('palette-type-selector');
+      const levelSelector = document.getElementById('level-selector');
+      const levelBadge = document.getElementById('level-badge');
+
+      if (mode === 'syntax') {
+        btnSyntax.className = "px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white text-indigo-700 shadow-md flex items-center gap-2";
+        btnMorpheme.className = "px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-2";
+        modeBadge.innerText = "Синтаксис";
+        modeBadge.className = "bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider";
+
+        syntaxWS.classList.remove('hidden');
+        morphemeWS.classList.add('hidden');
+        paletteSelector.classList.remove('hidden');
+        levelSelector.classList.remove('hidden');
+        levelBadge.classList.remove('hidden');
+
+        setPaletteSubtype('members');
+      } else {
+        btnMorpheme.className = "px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 bg-white text-indigo-700 shadow-md flex items-center gap-2";
+        btnSyntax.className = "px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 text-white hover:bg-white/10 flex items-center gap-2";
+        modeBadge.innerText = "Морфемика";
+        modeBadge.className = "bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider";
+
+        morphemeWS.classList.remove('hidden');
+        morphemeWS.classList.add('flex');
+        syntaxWS.classList.add('hidden');
+        paletteSelector.classList.add('hidden');
+        levelSelector.classList.add('hidden');
+        levelBadge.classList.add('hidden');
+
+        document.getElementById('syntax-palette-members').classList.add('hidden');
+        document.getElementById('syntax-palette-pos').classList.add('hidden');
+        document.getElementById('morpheme-palette').classList.remove('hidden');
+        document.getElementById('morpheme-palette').classList.add('grid');
+
+        document.getElementById('instruction-text').innerText = "Выделите части слова відповідным значком морфемы:";
+      }
+
+      renderCurrentTask();
+    }
+
+    function setLevel(lvl) {
+      currentLevel = lvl;
+      playSound('pop');
+
+      // Обновление кнопок уровней
+      [1, 2, 3].forEach(i => {
+        const btn = document.getElementById(`btn-lvl-${i}`);
+        if (i === lvl) {
+          btn.className = `px-3 py-1 rounded-lg ${i===1?'bg-emerald-500':i===2?'bg-amber-500':'bg-rose-500'} text-white shadow-sm font-bold`;
+        } else {
+          btn.className = "px-3 py-1 rounded-lg text-slate-600 hover:bg-slate-200 font-bold";
+        }
+      });
+
+      // Обновление плашки уровня
+      const levelBadge = document.getElementById('level-badge');
+      if (lvl === 1) {
+        levelBadge.className = "bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1";
+        levelBadge.innerHTML = '<i class="fa-solid fa-seedling"></i> Уровень 1';
+      } else if (lvl === 2) {
+        levelBadge.className = "bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1";
+        levelBadge.innerHTML = '<i class="fa-solid fa-star"></i> Уровень 2';
+      } else {
+        levelBadge.className = "bg-rose-100 text-rose-800 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1";
+        levelBadge.innerHTML = '<i class="fa-solid fa-fire"></i> Уровень 3';
+      }
+
+      updateInstructionText();
+      renderCurrentTask();
+    }
+
+    function updateInstructionText() {
+      const textEl = document.getElementById('instruction-text');
+      if (currentMode === 'morpheme') return;
+
+      if (currentLevel === 1) {
+        textEl.innerText = "🟢 Уровень 1 (Облегчённый): Выделите только грамматическую основу (подлежащее и сказуемое) и подпишите части речи над главными словами!";
+      } else if (currentLevel === 2) {
+        textEl.innerText = "🟡 Уровень 2 (Средний): Выделите основу + определения, и подпишите части речи над ВСЕМИ словами!";
+      } else {
+        textEl.innerText = "🔴 Уровень 3 (Высокий): Выполните полный синтаксический разбор (все члены предложения) и подпишите части речи над каждым словом!";
+      }
+    }
+
+    function setPaletteSubtype(subtype) {
+      const btnMembers = document.getElementById('btn-pal-members');
+      const btnPos = document.getElementById('btn-pal-pos');
+      const palMembers = document.getElementById('syntax-palette-members');
+      const palPos = document.getElementById('syntax-palette-pos');
+
+      if (subtype === 'members') {
+        btnMembers.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow";
+        btnPos.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+        palMembers.classList.remove('hidden');
+        palMembers.classList.add('grid');
+        palPos.classList.add('hidden');
+      } else {
+        btnPos.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow";
+        btnMembers.className = "px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200";
+        palPos.classList.remove('hidden');
+        palPos.classList.add('grid');
+        palMembers.classList.add('hidden');
+      }
+      clearToolSelection();
+    }
+
+    function renderCurrentTask() {
+      const tasks = currentMode === 'syntax' ? syntaxTasks : morphemeTasks;
+      document.getElementById('task-counter').innerText = `Задание ${currentTaskIndex + 1} из ${tasks.length}`;
+
+      if (currentMode === 'syntax') {
+        renderSyntaxWorkspace();
+      } else {
+        renderMorphemeWorkspace();
+      }
+    }
+
+    function prevTask() {
+      if (currentTaskIndex > 0) {
+        currentTaskIndex--;
+        renderCurrentTask();
+      }
+    }
+
+    function nextTask() {
+      const tasks = currentMode === 'syntax' ? syntaxTasks : morphemeTasks;
+      if (currentTaskIndex < tasks.length - 1) {
+        currentTaskIndex++;
+        renderCurrentTask();
+      }
+    }
+
+    /* ==========================================
+       4. РЕНДЕРИНГ СИНТАКСИСА И ЧАСТЕЙ РЕЧИ
+       ========================================== */
+
+    function renderSyntaxWorkspace() {
+      const workspace = document.getElementById('syntax-workspace');
+      workspace.innerHTML = '';
+      userSyntaxAnswers = {};
+
+      const currentTask = syntaxTasks[currentTaskIndex];
+      const words = currentTask.text.split(' ');
+
+      words.forEach((word, index) => {
+        const wordContainer = document.createElement('div');
+        wordContainer.className = "syntax-word-box flex flex-col items-center cursor-pointer p-2 rounded-2xl hover:bg-indigo-50/50 transition relative min-w-[70px]";
+        wordContainer.dataset.index = index;
+
+        // 1. Верхняя зона: Часть речи (над словом)
+        const posZone = document.createElement('div');
+        posZone.className = "pos-zone h-6 flex items-center justify-center text-xs font-extrabold text-indigo-600 mb-1 border-b border-dashed border-transparent hover:border-slate-300 w-full transition";
+        posZone.innerText = "";
+
+        // 2. Слово
+        const wordText = document.createElement('span');
+        wordText.className = "text-xl md:text-2xl font-extrabold text-slate-800 tracking-wide my-1 select-none";
+        wordText.innerText = word;
+
+        // 3. Нижняя зона: Подчёркивание (член предложения)
+        const underlineZone = document.createElement('div');
+        underlineZone.className = "underline-zone w-full min-h-[14px] flex items-center justify-center border-b-2 border-dashed border-slate-200 rounded transition mt-1";
+
+        wordContainer.appendChild(posZone);
+        wordContainer.appendChild(wordText);
+        wordContainer.appendChild(underlineZone);
+
+        // Клик по слову для наложения выделенного инструмента
+        wordContainer.addEventListener('click', () => {
+          if (selectedTool && selectedCategory) {
+            applySyntaxAnswer(index, selectedTool, selectedCategory);
+          }
+        });
+
+        workspace.appendChild(wordContainer);
+      });
+
+      initDropzones();
+    }
+
+    function applySyntaxAnswer(wordIndex, type, category) {
+      if (!userSyntaxAnswers[wordIndex]) {
+        userSyntaxAnswers[wordIndex] = { member: null, pos: null };
+      }
+
+      playSound('pop');
+      const wordBoxes = document.querySelectorAll('.syntax-word-box');
+      const targetBox = wordBoxes[wordIndex];
+      if (!targetBox) return;
+
+      if (category === 'member') {
+        userSyntaxAnswers[wordIndex].member = type;
+        const zone = targetBox.querySelector('.underline-zone');
+        zone.innerHTML = '';
+        zone.className = "underline-zone w-full min-h-[14px] flex items-center justify-center border-b-0";
+
+        if (type) {
+          const line = document.createElement('div');
+          line.className = `line-${type}`;
+          zone.appendChild(line);
+        }
+      } else if (category === 'pos') {
+        userSyntaxAnswers[wordIndex].pos = type;
+        const posZone = targetBox.querySelector('.pos-zone');
+        posZone.innerText = type || '';
+      }
+    }
+
+    /* ==========================================
+       5. РЕНДЕРИНГ МОРФЕМИКИ
+       ========================================== */
+
+    function renderMorphemeWorkspace() {
+      const container = document.getElementById('morpheme-word-container');
+      container.innerHTML = '';
+      userMorphemeAnswers = {};
+
+      const currentTask = morphemeTasks[currentTaskIndex];
+
+      currentTask.parts.forEach((part, index) => {
+        const partBox = document.createElement('div');
+        partBox.className = "morpheme-part-box flex flex-col items-center p-2 rounded-2xl bg-slate-50 border-2 border-slate-200 cursor-pointer hover:border-indigo-300 transition relative min-w-[50px]";
+        partBox.dataset.index = index;
+
+        const topSymbolZone = document.createElement('div');
+        topSymbolZone.className = "morpheme-symbol-top h-6 flex items-center justify-center w-full mb-1";
+
+        const partText = document.createElement('span');
+        partText.className = "text-2xl font-black text-slate-800 tracking-wider px-1 select-none";
+        partText.innerText = part.text;
+
+        const bottomSymbolZone = document.createElement('div');
+        bottomSymbolZone.className = "morpheme-symbol-bottom h-4 flex items-center justify-center w-full mt-1";
+
+        partBox.appendChild(topSymbolZone);
+        partBox.appendChild(partText);
+        partBox.appendChild(bottomSymbolZone);
+
+        partBox.addEventListener('click', () => {
+          if (selectedTool) {
+            applyMorphemeAnswer(index, selectedTool);
+          }
+        });
+
+        container.appendChild(partBox);
+      });
+
+      initDropzones();
+    }
+
+    function applyMorphemeAnswer(partIndex, type) {
+      userMorphemeAnswers[partIndex] = type;
+      playSound('pop');
+
+      const partBoxes = document.querySelectorAll('.morpheme-part-box');
+      const targetBox = partBoxes[partIndex];
+      if (!targetBox) return;
+
+      const topZone = targetBox.querySelector('.morpheme-symbol-top');
+      const bottomZone = targetBox.querySelector('.morpheme-symbol-bottom');
+
+      if (type === 'base') {
+        bottomZone.innerHTML = '<div class="morpheme-base-icon w-full"></div>';
+      } else {
+        topZone.innerHTML = '';
+        if (type === 'prefix') topZone.innerHTML = '<div class="morpheme-prefix-icon"></div>';
+        if (type === 'root') topZone.innerHTML = '<div class="morpheme-root-icon"></div>';
+        if (type === 'suffix') topZone.innerHTML = '<div class="morpheme-suffix-icon"></div>';
+        if (type === 'ending') topZone.innerHTML = '<div class="morpheme-ending-icon"></div>';
+      }
+    }
+
+    /* ==========================================
+       6. TOUCH & POINTER DRAG-AND-DROP ДВИЖОК
+       ========================================== */
+
+    function clearToolSelection() {
+      selectedTool = null;
+      selectedCategory = null;
+      document.querySelectorAll('.palette-item').forEach(el => {
+        el.classList.remove('ring-4', 'ring-indigo-400', 'bg-indigo-100');
+      });
+    }
+
+    document.querySelectorAll('.palette-item').forEach(item => {
+      
+      item.addEventListener('click', (e) => {
+        const type = item.dataset.type;
+        const category = item.dataset.category;
+
+        if (selectedTool === type) {
+          clearToolSelection();
+        } else {
+          clearToolSelection();
+          selectedTool = type;
+          selectedCategory = category;
+          item.classList.add('ring-4', 'ring-indigo-400', 'bg-indigo-100');
+          playSound('pop');
+        }
+      });
+
+      item.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          type: item.dataset.type,
+          category: item.dataset.category
+        }));
+        playSound('pop');
+      });
+
+      let ghostEl = null;
+
+      item.addEventListener('touchstart', (e) => {
+        const touch = e.touches[0];
+        ghostEl = item.cloneNode(true);
+        ghostEl.classList.add('drag-ghost');
+        ghostEl.style.left = `${touch.clientX - 40}px`;
+        ghostEl.style.top = `${touch.clientY - 40}px`;
+        document.body.appendChild(ghostEl);
+
+        item.dataset.draggingData = JSON.stringify({
+          type: item.dataset.type,
+          category: item.dataset.category
+        });
+        playSound('pop');
+      }, { passive: true });
+
+      item.addEventListener('touchmove', (e) => {
+        if (!ghostEl) return;
+        const touch = e.touches[0];
+        ghostEl.style.left = `${touch.clientX - 40}px`;
+        ghostEl.style.top = `${touch.clientY - 40}px`;
+      }, { passive: true });
+
+      item.addEventListener('touchend', (e) => {
+        if (ghostEl) {
+          ghostEl.remove();
+          ghostEl = null;
+        }
+
+        const touch = e.changedTouches[0];
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (!targetEl || !item.dataset.draggingData) return;
+
+        const data = JSON.parse(item.dataset.draggingData);
+
+        if (currentMode === 'syntax') {
+          const wordBox = targetEl.closest('.syntax-word-box');
+          if (wordBox) {
+            applySyntaxAnswer(parseInt(wordBox.dataset.index), data.type, data.category);
+          }
+        } else {
+          const partBox = targetEl.closest('.morpheme-part-box');
+          if (partBox) {
+            applyMorphemeAnswer(parseInt(partBox.dataset.index), data.type);
+          }
+        }
+      });
+    });
+
+    function initDropzones() {
+      if (currentMode === 'syntax') {
+        document.querySelectorAll('.syntax-word-box').forEach(box => {
+          box.addEventListener('dragover', (e) => e.preventDefault());
+          box.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const index = parseInt(box.dataset.index);
+            applySyntaxAnswer(index, data.type, data.category);
+          });
+        });
+      } else {
+        document.querySelectorAll('.morpheme-part-box').forEach(box => {
+          box.addEventListener('dragover', (e) => e.preventDefault());
+          box.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+            const index = parseInt(box.dataset.index);
+            applyMorphemeAnswer(index, data.type);
+          });
+        });
+      }
+    }
+
+    /* ==========================================
+       7. РАЗНОУРОВНЕВАЯ ПРОВЕРКА ОТВЕТОВ
+       ========================================== */
+
+    function checkAnswers() {
+      let isCorrect = true;
+
+      if (currentMode === 'syntax') {
+        const task = syntaxTasks[currentTaskIndex];
+        const wordBoxes = document.querySelectorAll('.syntax-word-box');
+
+        wordBoxes.forEach((box, idx) => {
+          const expected = task.fullAnswers[idx];
+          const actual = userSyntaxAnswers[idx] || { member: null, pos: null };
+
+          let wordOk = true;
+
+          // ПРОВЕРКА ПО УРОВНЯМ СЛОЖНОСТИ:
+          if (currentLevel === 1) {
+            // Уровень 1: Проверяем ТОЛЬКО грамматическую основу + части речи над ними
+            if (expected.member === 'subject' || expected.member === 'predicate') {
+              if (actual.member !== expected.member || actual.pos !== expected.pos) {
+                wordOk = false;
+              }
+            }
+          } else if (currentLevel === 2) {
+            // Уровень 2: Проверяем грамматическую основу + определения + ЧАСТИ РЕЧИ ВСЕХ СЛОВ
+            const isTargetMember = (expected.member === 'subject' || expected.member === 'predicate' || expected.member === 'definition');
+            if (isTargetMember && actual.member !== expected.member) wordOk = false;
+            if (actual.pos !== expected.pos) wordOk = false; // Части речи над каждым словом
+          } else {
+            // Уровень 3: Полный разбор (все члены + все части речи)
+            if (actual.member !== expected.member || actual.pos !== expected.pos) {
+              wordOk = false;
+            }
+          }
+
+          if (wordOk) {
+            box.classList.add('bg-emerald-100', 'animate-success');
+            box.classList.remove('bg-red-100', 'animate-error');
+          } else {
+            isCorrect = false;
+            box.classList.add('bg-red-100', 'animate-error');
+            box.classList.remove('bg-emerald-100', 'animate-success');
+          }
+        });
+
+      } else {
+        const task = morphemeTasks[currentTaskIndex];
+        const partBoxes = document.querySelectorAll('.morpheme-part-box');
+
+        partBoxes.forEach((box, idx) => {
+          const expected = task.parts[idx].type;
+          const actual = userMorphemeAnswers[idx];
+
+          if (expected === actual) {
+            box.classList.add('border-emerald-500', 'bg-emerald-50', 'animate-success');
+            box.classList.remove('border-red-500', 'bg-red-50', 'animate-error');
+          } else {
+            isCorrect = false;
+            box.classList.add('border-red-500', 'bg-red-50', 'animate-error');
+            box.classList.remove('border-emerald-500', 'bg-emerald-50', 'animate-success');
+          }
+        });
+      }
+
+      if (isCorrect) {
+        playSound('success');
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } else {
+        playSound('error');
+      }
+    }
+
+    function resetCurrentTask() {
+      clearToolSelection();
+      renderCurrentTask();
+      playSound('pop');
+    }
+
+    /* ==========================================
+       8. ФУНКЦИОНАЛ УЧИТЕЛЯ
+       ========================================== */
+
+    function openCustomTaskModal() {
+      document.getElementById('modal-teacher').classList.remove('hidden');
+    }
+
+    function closeCustomTaskModal() {
+      document.getElementById('modal-teacher').classList.add('hidden');
+    }
+
+    function saveCustomTask() {
+      const type = document.getElementById('custom-task-type').value;
+      const text = document.getElementById('custom-task-text').value.trim();
+
+      if (!text) return;
+
+      if (type === 'syntax') {
+        const words = text.split(' ');
+        const dummyFullAnswers = words.map(() => ({ member: 'subject', pos: 'сущ.' }));
+
+        syntaxTasks.push({
+          text: text,
+          fullAnswers: dummyFullAnswers
+        });
+        switchMode('syntax');
+        currentTaskIndex = syntaxTasks.length - 1;
+      } else {
+        const parts = text.split('-').map(p => ({ text: p, type: 'root' }));
+        morphemeTasks.push({
+          word: text,
+          parts: parts.length > 1 ? parts : [{ text: text, type: 'root' }]
+        });
+        switchMode('morpheme');
+        currentTaskIndex = morphemeTasks.length - 1;
+      }
+
+      renderCurrentTask();
+      closeCustomTaskModal();
+      document.getElementById('custom-task-text').value = '';
+      playSound('success');
+    }
+
+    // Инициализация при загрузке
+    window.onload = () => {
+      setLevel(1);
+    };
+  </script>
+</body>
+</html>
